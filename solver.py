@@ -3,41 +3,6 @@
 """
 
 
-board = [
-[1,0,4,0,0,0,3,0,6],
-[8,0,9,0,3,0,5,7,0],
-[0,0,0,0,7,0,1,0,0],
-[4,2,6,0,0,0,0,0,3],
-[0,8,7,0,0,6,0,1,2],
-[3,0,0,0,0,0,0,0,9],
-[2,4,1,9,0,0,0,3,0],
-[0,0,0,2,0,0,0,8,0],
-[7,0,0,5,0,3,0,0,0]
-]
-
-board_hard = [
-[2,9,0,1,0,0,0,0,5],
-[0,7,0,0,5,0,0,0,0],
-[0,8,0,0,0,0,6,0,0],
-[4,0,0,0,3,2,0,0,0],
-[0,0,5,8,0,7,2,0,0],
-[0,0,0,9,6,0,0,0,1],
-[0,0,9,0,0,0,0,1,0],
-[0,0,0,0,2,0,0,5,0],
-[6,0,0,0,0,1,0,7,2],
-]
-
-board_evil= [
-[0,9,0,0,0,0,7,0,0],
-[0,0,0,0,1,0,0,0,8],
-[0,2,0,6,0,9,0,0,0],
-[5,0,0,0,6,0,3,2,0],
-[3,0,0,9,0,2,0,0,5],
-[0,6,2,0,3,0,0,0,4],
-[0,0,0,3,0,7,0,5,0],
-[9,0,0,0,4,0,0,0,0],
-[0,0,6,0,0,0,0,4,0],
-]
 class Square(object):
 	""" 
 	A square on the board.
@@ -74,7 +39,7 @@ class Square(object):
 		return False
 
 class SudokuBoard(object):
-	" model "
+	" Model of a Sudoku board, with convenience functions "
 
 	def __init__(self, initial_state=None):
 		if not initial_state:
@@ -164,6 +129,7 @@ class SudokuBoard(object):
 			cube.extend(self.rows[row_min+i][col_min:col_min+3])
 		return cube
 
+
 	def solved(self):
 		" Returns true when the puzzle is complete "
 		good_set = set(range(1,10))
@@ -182,8 +148,8 @@ class SudokuBoard(object):
 
 class Solver(object):
 	" Methods to solve the puzzle "
-	def __init__(self):
-		self.puzzle = SudokuBoard(board_evil)
+	def __init__(self, board):
+		self.puzzle = board
 
 	def run(self):
 		" Solve the puzzle "
@@ -203,8 +169,8 @@ class Solver(object):
 						print "found %s,%s through identify_only" % (r,c)
 						square.set(option)
 			
-			print self.puzzle
-			print self.puzzle.show_options()
+			#print self.puzzle
+			#print self.puzzle.show_options()
 			if self.puzzle.solved():
 				print self.puzzle
 				print "Game won!"
@@ -212,17 +178,8 @@ class Solver(object):
 
 
 
-
 if __name__ == "__main__":
-	s = Solver()
+	from boards import *
+	s = Solver(SudokuBoard(board_hard))
 	s.run()
-
-
-
-
-
-
-
-
-
 

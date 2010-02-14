@@ -1,0 +1,21 @@
+Sudoku Solver
+
+This Python module can solve even 'hard' sudoku problems almost instantly. It takes
+longer to input the board, then it does to solve the problem.  It would probably benefit
+from either a problem generator, or a gui interface for input.
+
+__How to use__
+
+import solver
+import boards
+
+b = solver.SudokuBoard(board.board_hard)
+s = solver.Solver(b)
+s.run()
+
+
+To solve a different problem, pass in the board you want to solve to the constrcutor
+of SudokuBoard.  The board should be a list of 9 lists of length 9. Each entry 
+represents a square on the board. Use 0 for blanks.
+
+See boards.py for example boards.
