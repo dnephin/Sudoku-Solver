@@ -1,14 +1,16 @@
 """
- Sudoku model
+ Sudoku model and solver.
+
+ author: Daniel Nephin
 """
 
 
 class Square(object):
 	""" 
 	A square on the board.
-	This object is used so that i have a reference to the area, and i can index by
-	both rows and columns. It evaluates to the number it holds to simplify
-	checks for complete games, and possible moves.
+	This object is used so that there is a reference to the area, and i can 
+	index by both rows and columns. It evaluates to the number it holds to 
+	simplify checks for complete games, and possible moves.
 	"""
 	def __init__(self, num):
 		self.value = num
@@ -92,7 +94,7 @@ class SudokuBoard(object):
 
 	def identify_only_possibility(self, r, c):
 		"""
-		Determins if one of the options for this square is the only possibily
+		Determines if one of the options for this square is the only possibility
 		for that option in a row, column, or cube. Making it the correct option.
 		"""
 		target = self.rows[r][c]
