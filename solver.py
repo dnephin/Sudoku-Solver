@@ -15,7 +15,7 @@ class Square(object):
 	"""
 	def __init__(self, num):
 		self.value = int(num)
-		self.options = set([self.value]) if self.value else set(range(1,10))
+		self.options = set() if self.value else set(range(1,10))
 		
 	def __eq__(self, other):
 		if hasattr(other, 'value'):
@@ -80,10 +80,11 @@ class SudokuBoard(object):
 	def show_options(self):
 		" return a representation of the board based on the options per square "
 		s = ""
-		for r in range(9):
-			s += ("%s%s%s " * 3) % tuple(
-				"[%s]" % len(sq.options) for sq in self.rows[r]) + "\n"
-			if r % 3 ==  2:
+		row_string = "[%9s] [%9s] [%9s]   " * 3 + "\n"
+		for i in range(9):
+			r = self.rows[i]
+			s += row_string % tuple([("%s" * len(s.options)) % tuple(s.options) for s in r])
+			if i % 3 ==  2:
 				s += "\n"
 		return s
 
@@ -154,35 +155,69 @@ class SudokuBoard(object):
 					return False
 		return True
 
+	def get_status(self):
+		"""
+		Return a status tuple which represents the current state of the board
+		being solved. The tuple is in the form (num_solved_squares, num_options).
+		"""
+		total_solved = 0
+		total_options = 0
+		
+		for r in self.rows:
+			for s in r:
+				total_solved += int(bool(s))
+				total_options += len(s.options)
+		return (total_solved, total_options)
 
-def solve(self, board):
+
+def solve(board, print_cycle=10):
 	" Solve the puzzle "
+
+	prev_status = None
+
+	counter = 0
+
 	while True:
 		for r in range(9):
 			for c in range(9):
-				square = self.puzzle.rows[r][c]
+				square = board.rows[r][c]
 				# skip solved squares
 				if square:
 					continue
-				options = self.puzzle.find_options_for(r, c)
+				options = board.find_options_for(r, c)
 				if square.set(options):
 					print "found %s,%s through find_options" % (r,c)
 					continue
-				option = self.puzzle.identify_only_possibility(r, c)
+				option = board.identify_only_possibility(r, c)
 				if option:
 					print "found %s,%s through identify_only" % (r,c)
 					square.set(option)
 		
-		print self.puzzle
-		print self.puzzle.show_options()
-		if self.puzzle.solved():
-			print self.puzzle
-			print "Game won!"
-			return
+		counter += 1
+		if board.solved():
+			print "Solved in %d rounds." % counter
+			return board
+
+		status = board.get_status()
+		if status  == prev_status:
+			print "Failed in %d rounds." % counter
+			print board
+			print board.show_options()
+			return None
+
+		prev_status = status
+
+		if counter % print_cycle == print_cycle - 1:
+			print board
+			print board.show_options()
 
 
 
 if __name__ == "__main__":
-	from boards import *
-	solve(SudokuBoard(board_easy))
+	import boards
+	import sys
+
+	board = solve(SudokuBoard(boards.board_test))
+	print board
+	print "Game won!" if board else "Lost!"
 

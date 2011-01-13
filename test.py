@@ -14,7 +14,7 @@ class TestSquare(unittest.TestCase):
 	def test_init(self):
 		s = Square(9)
 		self.assertEquals(s.value, 9)
-		self.assertEquals(s.options, set([9]))
+		self.assertEquals(s.options, set())
 
 		s = Square(0)
 		self.assertEquals(s.value, 0)
@@ -22,7 +22,7 @@ class TestSquare(unittest.TestCase):
 
 		s = Square('1')
 		self.assertEquals(s.value, 1)
-		self.assertEquals(s.options, set([1]))
+		self.assertEquals(s.options, set())
 
 	def test_eq(self):
 		s = Square(4)
@@ -117,6 +117,10 @@ class SudobuBoardTest(unittest.TestCase):
 		self.assertTrue(solved.solved())
 		self.assertFalse(self.board.solved())
 
+	def test_get_status(self):
+		solved = SudokuBoard(self._solved)
+		self.assertEquals(self.board.get_status(), (32,441))
+		self.assertEquals(solved.get_status(), (81, 0))
 
 
 if __name__ == "__main__":
