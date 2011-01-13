@@ -4,6 +4,7 @@
  author: Daniel Nephin
 """
 
+import re
 
 class Square(object):
 	""" 
@@ -13,11 +14,9 @@ class Square(object):
 	simplify checks for complete games, and possible moves.
 	"""
 	def __init__(self, num):
-		self.value = num
-		if not num:
-			self.options = set(range(1,10))
-		else:
-			self.options = set([num])
+		self.value = int(num)
+		self.options = set([self.value]) if self.value else set(range(1,10))
+		
 	def __eq__(self, other):
 		if hasattr(other, 'value'):
 			return self.value == other.value
@@ -29,31 +28,23 @@ class Square(object):
 	def __nonzero__(self):
 		return bool(self.value)
 	def __repr__(self):
-		if not self.value:
-			return "_"
-		return str(self.value)
+		return "%r" % (self.value) if self.value else "_"
 	def set(self, options):
+		self.options = options
 		if len(options) == 1:
 			self.value = options.pop() 
-			self.options = options
 			return True
-		self.options = options
 		return False
 
 class SudokuBoard(object):
 	" Model of a Sudoku board, with convenience functions "
 
 	def __init__(self, initial_state=None):
-		if not initial_state:
-			initial_state = []
-			for i in range(9):
-				initial_state.append(list(map(int, "0"*9)))
-		# index rows
-		self.rows = []
-		for r in range(9):
-			self.rows.append([])
-			for c in range(9):
-				self.rows[r].append(Square(initial_state[r][c]))
+		self.rows = self.load_board(initial_state)
+
+		if not self.rows:
+			self.rows = [[Square(int(0)) for s in range(9)] for row in range(9)]
+
 		# index cols
 		self.cols = []
 		for c in range(9):
@@ -61,11 +52,26 @@ class SudokuBoard(object):
 			for r in range(9):
 				self.cols[c].append(self.rows[r][c])
 
+
+	def load_board(self, board):
+		"""
+		Load a board from a list of strings.
+		"""
+		if not board:
+			return None
+		if len(board) < 9:
+			return None
+
+		sboard = []
+		for r in range(9):
+			sboard.append([Square(s) for s in re.sub('\s+', '', board[r])])
+		return sboard
+
 	def __repr__(self):
 		" return the board as a string "
 		s = ""
 		for r in range(9):
-			s += ("%s%s%s " * 3) % tuple(map(str, self.rows[r])) + "\n"
+			s += ("%s%s%s " * 3) % tuple("%s" % s for s in self.rows[r]) + "\n"
 			if r % 3 == 2:
 				s += "\n"
 		return s
@@ -75,7 +81,8 @@ class SudokuBoard(object):
 		" return a representation of the board based on the options per square "
 		s = ""
 		for r in range(9):
-			s += ("%s%s%s " * 3) % tuple(map(lambda sq: "["+str(len(sq.options))+"]", self.rows[r])) + "\n"
+			s += ("%s%s%s " * 3) % tuple(
+				"[%s]" % len(sq.options) for sq in self.rows[r]) + "\n"
 			if r % 3 ==  2:
 				s += "\n"
 		return s
@@ -148,40 +155,34 @@ class SudokuBoard(object):
 		return True
 
 
-class Solver(object):
-	" Methods to solve the puzzle "
-	def __init__(self, board):
-		self.puzzle = board
-
-	def run(self):
-		" Solve the puzzle "
-		while True:
-			for r in range(9):
-				for c in range(9):
-					square = self.puzzle.rows[r][c]
-					# skip solved squares
-					if square:
-						continue
-					options = self.puzzle.find_options_for(r, c)
-					if square.set(options):
-						print "found %s,%s through find_options" % (r,c)
-						continue
-					option = self.puzzle.identify_only_possibility(r, c)
-					if option:
-						print "found %s,%s through identify_only" % (r,c)
-						square.set(option)
-			
-			#print self.puzzle
-			#print self.puzzle.show_options()
-			if self.puzzle.solved():
-				print self.puzzle
-				print "Game won!"
-				return
+def solve(self, board):
+	" Solve the puzzle "
+	while True:
+		for r in range(9):
+			for c in range(9):
+				square = self.puzzle.rows[r][c]
+				# skip solved squares
+				if square:
+					continue
+				options = self.puzzle.find_options_for(r, c)
+				if square.set(options):
+					print "found %s,%s through find_options" % (r,c)
+					continue
+				option = self.puzzle.identify_only_possibility(r, c)
+				if option:
+					print "found %s,%s through identify_only" % (r,c)
+					square.set(option)
+		
+		print self.puzzle
+		print self.puzzle.show_options()
+		if self.puzzle.solved():
+			print self.puzzle
+			print "Game won!"
+			return
 
 
 
 if __name__ == "__main__":
 	from boards import *
-	s = Solver(SudokuBoard(board_hard))
-	s.run()
+	solve(SudokuBoard(board_easy))
 
