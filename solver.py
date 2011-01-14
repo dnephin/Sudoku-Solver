@@ -5,6 +5,7 @@
 """
 
 import re
+from itertools import ifilterfalse
 
 class Square(object):
 	""" 
@@ -93,7 +94,7 @@ class SudokuBoard(object):
 		Return a list of possible options for a square on the board. Checks
 		the row, column, and cube for existing numbers. 
 		"""
-		options = set(range(1,10))
+		options = self.rows[r][c].options
 		options -= set(self.rows[r])
 		options -= set(self.cols[c])
 		options -= set(self.get_cube(r, c))
@@ -107,26 +108,13 @@ class SudokuBoard(object):
 		"""
 		target = self.rows[r][c]
 
-		def deduce_options(related_list):
+		for related_list in (self.rows[r], self.cols[c], self.get_cube(r, c)):
 			others_options = set()
-			for square in related_list:
-				if square is target:
-					continue
+			for square in ifilterfalse(lambda s: s is target, related_list):
 				others_options |= set(square.options)
 			options = target.options - others_options
 			if len(options) == 1:
 				return options
-			return False
-			
-		option = deduce_options(self.rows[r][0:c] + self.rows[r][c+1:10])
-		if option:
-			return option
-		option = deduce_options(self.cols[c][0:r] + self.cols[c][r+1:10])
-		if option:
-			return option
-		option = deduce_options(self.get_cube(r, c))
-		if option:
-			return option
 		return False
 
 
@@ -184,8 +172,7 @@ def solve(board, print_cycle=10):
 				# skip solved squares
 				if square:
 					continue
-				options = board.find_options_for(r, c)
-				if square.set(options):
+				if square.set(board.find_options_for(r, c)):
 					print "found %s,%s through find_options" % (r,c)
 					continue
 				option = board.identify_only_possibility(r, c)
