@@ -49,7 +49,7 @@ class TestSquare(unittest.TestCase):
 		self.assertEquals(self.s.value, 1)
 
 
-class SudobuBoardTest(unittest.TestCase):
+class TestSudobuBoard(unittest.TestCase):
 
 
 	_input = [
