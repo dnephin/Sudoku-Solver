@@ -5,6 +5,7 @@
 """
 
 import re
+from itertools import ifilterfalse, chain, ifilter
 
 class Square(object):
 	""" 
@@ -31,10 +32,13 @@ class Square(object):
 		return "%r" % (self.value) if self.value else "_"
 	def set(self, options):
 		self.options = options
-		if len(options) == 1:
-			self.value = options.pop() 
+		return self.check()
+	def check(self):
+		if len(self.options) == 1:
+			self.value = self.options.pop() 
 			return True
 		return False
+		
 
 class SudokuBoard(object):
 	" Model of a Sudoku board, with convenience functions "
@@ -93,7 +97,7 @@ class SudokuBoard(object):
 		Return a list of possible options for a square on the board. Checks
 		the row, column, and cube for existing numbers. 
 		"""
-		options = set(range(1,10))
+		options = self.rows[r][c].options
 		options -= set(self.rows[r])
 		options -= set(self.cols[c])
 		options -= set(self.get_cube(r, c))
@@ -107,36 +111,69 @@ class SudokuBoard(object):
 		"""
 		target = self.rows[r][c]
 
-		def deduce_options(related_list):
+		for related_list in (self.rows[r], self.cols[c], self.get_cube(r, c)):
 			others_options = set()
-			for square in related_list:
-				if square is target:
-					continue
+			for square in ifilterfalse(lambda s: s is target, related_list):
 				others_options |= set(square.options)
 			options = target.options - others_options
 			if len(options) == 1:
 				return options
-			return False
-			
-		option = deduce_options(self.rows[r][0:c] + self.rows[r][c+1:10])
-		if option:
-			return option
-		option = deduce_options(self.cols[c][0:r] + self.cols[c][r+1:10])
-		if option:
-			return option
-		option = deduce_options(self.get_cube(r, c))
-		if option:
-			return option
 		return False
 
+
+	def find_isolation_lines(self, cube_r, cube_c):
+		"""
+		Given a coordinate in a cube, find any isolated rows or column which 
+		restrict an option to that row or column.  Then remove that number as 
+		an option from any other cubes that are aligned with this cube.
+		"""
+		row_min = cube_r * 3
+		col_min = cube_c * 3
+		empty_rows = set()
+		empty_cols = set()
+
+		solved_count = 0
+
+		for r in range(row_min, 3):
+			for c in range(col_min, 3):
+				if not self.rows[r][c]:	
+					empty_rows.add(r)
+					empty_rows.add(c)
+
+		if len(empty_rows) == 1:
+			restricted_options = set(
+					s.options for s in self.rows[empty_rows[0]][col_min:col_min+3])
+
+			# get the other rows of cubes that share this cubes rows
+			for r in ifilter(lambda i: i < row_min and i > row_min+2, range(9)):
+				for c in range(9):
+					square = self.rows[r][c]
+					if square:
+						square.options -= restricted_options
+						if square.check():
+							solved_count += 1
+
+		# TODO: refactor to function
+		if len(empty_cols) == 1:
+			restricted_options = set(
+					s.options for s in self.cols[empty_cols[0]][row_min:row_min+3])
+
+			# get the other rows of cubes that share this cubes rows
+			for c in ifilter(lambda i: i < col_min and i > col_min+2, range(9)):
+				for r in range(9):
+					square = self.cols[c][r]
+					if square:
+						square.options -= restricted_options
+						if square.check():
+							solved_count += 1
+		
 
 	def get_cube(self, r, c):
 		" Return the local cube of 9 squares for a given row and column, as a list. "
 		row_min = r / 3 * 3
 		col_min = c / 3 * 3
-		cube = []
-		for i in range(3):
-			cube.extend(self.rows[row_min+i][col_min:col_min+3])
+		cube = list(chain(
+			*(r[col_min:col_min+3] for r in self.rows[row_min:row_min+3])))
 		return cube
 
 
@@ -184,14 +221,19 @@ def solve(board, print_cycle=10):
 				# skip solved squares
 				if square:
 					continue
-				options = board.find_options_for(r, c)
-				if square.set(options):
+				if square.set(board.find_options_for(r, c)):
 					print "found %s,%s through find_options" % (r,c)
 					continue
 				option = board.identify_only_possibility(r, c)
 				if option:
 					print "found %s,%s through identify_only" % (r,c)
 					square.set(option)
+
+		for cube_r in range(3):
+			for cube_c in range(3):
+				solved = board.find_isolation_lines(cube_r, cube_c)
+				if solved:
+					print "found %d using find isolation lines." % solved
 		
 		counter += 1
 		if board.solved():
@@ -217,7 +259,7 @@ if __name__ == "__main__":
 	import boards
 	import sys
 
-	board = solve(SudokuBoard(boards.board_test))
+	board = solve(SudokuBoard(boards.board_erica))
 	print board
 	print "Game won!" if board else "Lost!"
 

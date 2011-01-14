@@ -48,6 +48,12 @@ class TestSquare(unittest.TestCase):
 		self.assertEquals(self.s.options, set([]))
 		self.assertEquals(self.s.value, 1)
 
+	def test_check(self):
+		s = Square(0)
+		s.options = set([1])
+		self.assertTrue(s.check())
+		self.assertFalse(Square(0).check())
+
 
 class TestSudobuBoard(unittest.TestCase):
 
@@ -106,6 +112,9 @@ class TestSudobuBoard(unittest.TestCase):
 		""
 		# TODO
 
+	def test_find_isolation_lines(self):
+		""
+		# TODO
 
 	def test_get_cube(self):
 		self.assertEquals(self.board.get_cube(2, 1), [1,0,4,8,0,9,0,0,0])
