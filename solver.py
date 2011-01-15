@@ -1,5 +1,5 @@
 """
- Sudoku model and solver.
+ sudoku model and solver.
 
  author: Daniel Nephin
 """
@@ -171,7 +171,7 @@ class SudokuBoard(object):
 					selected, sec_index, pri_dir)
 
 		# get the other (row/col) of cubes that share this cubes (row/col)
-		log.debug("Current state of game board:\n%", self)
+		log.debug("Current state of game board:\n%s", self)
 		for p in ifilter(lambda i: i < sec_min or i > sec_min+2, range(9)):
 			square = sec_dir[p][selected]
 			if not square:
@@ -228,6 +228,7 @@ class SudokuBoard(object):
 		"""
 		((s.check() for s in r) for r in self.rows)
 
+
 	def find_number_pairs_in_cube(self, cube_r, cube_c):
 		"""
 		If two numbers are options in only two places within a cube, then all
@@ -238,24 +239,30 @@ class SudokuBoard(object):
 
 		options = []
 		pairs = []
+		log.debug("Current state of game board:\n%s\n%s", 
+				self, self.show_options())
 		for square in self.get_cube(row_min, col_min, self.rows):
-			if square or len(square.options) != 2:
+			if len(square.options) != 2:
 				continue
 
-			if square.options in options:
-				pairs.append((square, options.pop(options.index(square))))
-				continue
-
-			options.append(square)
+			for option_square in options:
+				if square.options == option_square.options:
+					log.debug("Adding %s to pairs." % (square.options))
+					pairs.append((square, option_square))
+					break
+			else:
+				log.debug("Adding %s to options." % (square.options))
+				options.append(square)
 
 		# now remove this options from other squares in the cube
 		for items in pairs:
 			remove_options = items[0].options
 			for square in self.get_cube(row_min, col_min, self.rows):
 				if square or square is items[0] or square is items[1]:
-					log.info("Removing %s from square in cube (%d,%s)" % (
+					continue
+				log.debug("Removing %s from square in cube (%d,%s)" % (
 							remove_options, row_min, col_min))
-					square.options -= remove_options
+				square.options -= remove_options
 			
 				
 
@@ -322,7 +329,7 @@ if __name__ == "__main__":
 	import sys
 	logging.basicConfig(level=logging.INFO)
 
-	board = solve(SudokuBoard(boards.board_hard2))
+	board = solve(SudokuBoard(boards.board_evil))
 	print board
 	print "Game won!" if board else "Lost!"
 
