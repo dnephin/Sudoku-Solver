@@ -117,8 +117,8 @@ class TestSudobuBoard(unittest.TestCase):
 		# TODO
 
 	def test_get_cube(self):
-		self.assertEquals(self.board.get_cube(2, 1), [1,0,4,8,0,9,0,0,0])
-		self.assertEquals(self.board.get_cube(8,8), [0,3,0,0,8,0,0,0,0])
+		self.assertEquals(self.board.get_cube(2, 1, self.board.rows), [1,0,4,8,0,9,0,0,0])
+		self.assertEquals(self.board.get_cube(8,8, self.board.rows), [0,3,0,0,8,0,0,0,0])
 
 
 	def test_solved(self):

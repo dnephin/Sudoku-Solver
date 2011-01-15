@@ -6,6 +6,9 @@
 
 import re
 from itertools import ifilterfalse, chain, ifilter
+import logging
+
+log = logging
 
 class Square(object):
 	""" 
@@ -92,15 +95,18 @@ class SudokuBoard(object):
 				s += "\n"
 		return s
 
-	def find_options_for(self, r, c):
+	def find_options_for(self, r, c, index):
 		"""
 		Return a list of possible options for a square on the board. Checks
 		the row, column, and cube for existing numbers. 
 		"""
-		options = self.rows[r][c].options
-		options -= set(self.rows[r])
-		options -= set(self.cols[c])
-		options -= set(self.get_cube(r, c))
+		
+		other_index = self.cols if index == self.rows else self.rows
+
+		options = index[r][c].options
+		options -= set(index[r])
+		options -= set(other_index[c])
+		options -= set(self.get_cube(r, c, index))
 		return options
 
 
@@ -111,7 +117,7 @@ class SudokuBoard(object):
 		"""
 		target = self.rows[r][c]
 
-		for related_list in (self.rows[r], self.cols[c], self.get_cube(r, c)):
+		for related_list in (self.rows[r], self.cols[c], self.get_cube(r, c, self.rows)):
 			others_options = set()
 			for square in ifilterfalse(lambda s: s is target, related_list):
 				others_options |= set(square.options)
@@ -129,51 +135,60 @@ class SudokuBoard(object):
 		"""
 		row_min = cube_r * 3
 		col_min = cube_c * 3
-		empty_rows = set()
-		empty_cols = set()
+		solitary_rows = set()
+		solitary_cols = set()
 
 		solved_count = 0
 
-		for r in range(row_min, 3):
-			for c in range(col_min, 3):
+		for r in range(row_min, row_min+3):
+			for c in range(col_min, col_min+3):
 				if not self.rows[r][c]:	
-					empty_rows.add(r)
-					empty_rows.add(c)
+					solitary_rows.add(r)
+					solitary_cols.add(c)
+			
+		if len(solitary_rows) == 1:
+			solved_count += self._update_options(self.rows, self.cols, 
+					solitary_rows.pop(), row_min, col_min)
+			
+		if len(solitary_cols) == 1:
+			solved_count += self._update_options(self.cols, self.rows, 
+					solitary_cols.pop(), col_min, row_min)
 
-		if len(empty_rows) == 1:
-			restricted_options = set(
-					s.options for s in self.rows[empty_rows[0]][col_min:col_min+3])
+		return solved_count
 
-			# get the other rows of cubes that share this cubes rows
-			for r in ifilter(lambda i: i < row_min and i > row_min+2, range(9)):
-				for c in range(9):
-					square = self.rows[r][c]
-					if square:
-						square.options -= restricted_options
-						if square.check():
-							solved_count += 1
 
-		# TODO: refactor to function
-		if len(empty_cols) == 1:
-			restricted_options = set(
-					s.options for s in self.cols[empty_cols[0]][row_min:row_min+3])
+	def _update_options(self, pri_dir, sec_dir, selected, pri_min, sec_min):
+		"""
+		Helper function for find_isolated_lines.  Updates the options for other
+		rows/cols aligned with the isolated row/col that was identified by
+		find_isolated_lines.
+		"""
+		solved_count = 0
 
-			# get the other rows of cubes that share this cubes rows
-			for c in ifilter(lambda i: i < col_min and i > col_min+2, range(9)):
-				for r in range(9):
-					square = self.cols[c][r]
-					if square:
-						square.options -= restricted_options
-						if square.check():
-							solved_count += 1
-		
+		restricted_options = set()
+		for sec_index in range(sec_min,sec_min+3):
+			restricted_options |= self.find_options_for(
+					selected, sec_index, pri_dir)
 
-	def get_cube(self, r, c):
+		# get the other (row/col) of cubes that share this cubes (row/col)
+		log.debug("Current state of game board:\n%", self)
+		for p in ifilter(lambda i: i < sec_min or i > sec_min+2, range(9)):
+			square = sec_dir[p][selected]
+			if not square:
+				d =  "cols" if (pri_dir == self.rows) else "rows"
+				log.debug("Removing %s from %s %d" % (restricted_options, d, selected))
+				square.options -= restricted_options
+				if square.check():
+					solved_count += 1
+		return solved_count
+
+
+	def get_cube(self, r, c, index):
 		" Return the local cube of 9 squares for a given row and column, as a list. "
 		row_min = r / 3 * 3
 		col_min = c / 3 * 3
 		cube = list(chain(
-			*(r[col_min:col_min+3] for r in self.rows[row_min:row_min+3])))
+			*(r[col_min:col_min+3] for r in index[row_min:row_min+3])))
 		return cube
 
 
@@ -188,7 +203,7 @@ class SudokuBoard(object):
 				return False
 		for r in range(0,9,3):
 			for c in range(0,9,3):
-				if set(self.get_cube(r,c)) != good_set:
+				if set(self.get_cube(r,c, self.rows)) != good_set:
 					return False
 		return True
 
@@ -221,19 +236,21 @@ def solve(board, print_cycle=10):
 				# skip solved squares
 				if square:
 					continue
-				if square.set(board.find_options_for(r, c)):
-					print "found %s,%s through find_options" % (r,c)
+				if square.set(board.find_options_for(r, c, board.rows)):
+					log.info("found %s,%s through find_options" % (r,c))
 					continue
 				option = board.identify_only_possibility(r, c)
 				if option:
-					print "found %s,%s through identify_only" % (r,c)
+					log.info("found %s,%s through identify_only" % (r,c))
 					square.set(option)
 
 		for cube_r in range(3):
 			for cube_c in range(3):
 				solved = board.find_isolation_lines(cube_r, cube_c)
 				if solved:
-					print "found %d using find isolation lines." % solved
+					log.debug("Current state of game board:\n%", board)
+					log.debug(board.show_options())
+					log.info("found %d using find_isolation_lines." % solved)
 		
 		counter += 1
 		if board.solved():
@@ -258,8 +275,9 @@ def solve(board, print_cycle=10):
 if __name__ == "__main__":
 	import boards
 	import sys
+	logging.basicConfig(level=logging.INFO)
 
-	board = solve(SudokuBoard(boards.board_erica))
+	board = solve(SudokuBoard(boards.board_hard2))
 	print board
 	print "Game won!" if board else "Lost!"
 
