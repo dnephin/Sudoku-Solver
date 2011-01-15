@@ -222,6 +222,45 @@ class SudokuBoard(object):
 		return (total_solved, total_options)
 
 
+	def check_board(self):
+		"""
+		Check all squares for completion.
+		"""
+		((s.check() for s in r) for r in self.rows)
+
+	def find_number_pairs_in_cube(self, cube_r, cube_c):
+		"""
+		If two numbers are options in only two places within a cube, then all
+		other options in that square should be removed, and other items checked.
+		"""
+		row_min = cube_r * 3
+		col_min = cube_c * 3
+
+		options = []
+		pairs = []
+		for square in self.get_cube(row_min, col_min, self.rows):
+			if square or len(square.options) != 2:
+				continue
+
+			if square.options in options:
+				pairs.append((square, options.pop(options.index(square))))
+				continue
+
+			options.append(square)
+
+		# now remove this options from other squares in the cube
+		for items in pairs:
+			remove_options = items[0].options
+			for square in self.get_cube(row_min, col_min, self.rows):
+				if square or square is items[0] or square is items[1]:
+					log.info("Removing %s from square in cube (%d,%s)" % (
+							remove_options, row_min, col_min))
+					square.options -= remove_options
+			
+				
+
+
+
 def solve(board, print_cycle=10):
 	" Solve the puzzle "
 
@@ -251,7 +290,13 @@ def solve(board, print_cycle=10):
 					log.debug("Current state of game board:\n%", board)
 					log.debug(board.show_options())
 					log.info("found %d using find_isolation_lines." % solved)
-		
+
+		for cube_r in range(3):
+			for cube_c in range(3):
+				board.find_number_pairs_in_cube(cube_r, cube_c)
+	
+		board.check_board()
+
 		counter += 1
 		if board.solved():
 			print "Solved in %d rounds." % counter
