@@ -289,10 +289,12 @@ def find_unsolved_square(board):
 	Find a square that has not been solved.
 	"""
 	for (r, c, square) in board.all_squares():
-		pass
+		if square:
+			continue
+		return (r, c) 
 
 
-def solve(board, print_cycle=10):
+def solve(board, print_cycle=10, guess=False):
 	" Solve the puzzle "
 
 	prev_status = None
@@ -331,12 +333,20 @@ def solve(board, print_cycle=10):
 			return board
 
 		status = board.get_status()
-		if status  == prev_status:
+		if status == prev_status:
+			if guess:
+				return None
+
 			# time to guess
-			saved_board = deepcopy(board)
-			print "Failed in %d rounds." % counter
-			print board
-			print board.show_options()
+			(r, c) = find_unsolved_square(board)
+			for choice in board.rows[r][c].options:
+				log.info("Guessing %d for %d,%d" % (choice, r, c))
+				new_board = deepcopy(board)
+				new_board.rows[r][c].set(set([choice]))
+				if solve(new_board, guess=True):
+					return new_board
+			print new_board
+			print new_board.show_options()
 			return None
 
 		prev_status = status
@@ -352,7 +362,7 @@ if __name__ == "__main__":
 	import sys
 	logging.basicConfig(level=logging.INFO)
 
-	board = solve(SudokuBoard(boards.board_evil))
+	board = solve(SudokuBoard(boards.board_evil2))
 	print board
 	print "Game won!" if board else "Lost!"
 
