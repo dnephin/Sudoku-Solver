@@ -54,7 +54,6 @@ class TestSquare(unittest.TestCase):
 		self.assertTrue(s.check())
 		self.assertFalse(Square(0).check())
 
-
 class TestSudobuBoard(unittest.TestCase):
 
 
@@ -131,6 +130,12 @@ class TestSudobuBoard(unittest.TestCase):
 		self.assertEquals(self.board.get_status(), (32,441))
 		self.assertEquals(solved.get_status(), (81, 0))
 
+	def test_all_squares(self):
+		self.assertEquals(len(list(self.board.all_squares())), 81)
+
+	def test_check_board(self):
+		" check no errors thrown. "
+		self.board.check_board()
 
 if __name__ == "__main__":
 	unittest.main()

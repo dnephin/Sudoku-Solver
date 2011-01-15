@@ -7,6 +7,7 @@
 import re
 from itertools import ifilterfalse, chain, ifilter
 import logging
+from copy import deepcopy
 
 log = logging
 
@@ -90,7 +91,8 @@ class SudokuBoard(object):
 		row_string = "[%9s] [%9s] [%9s]   " * 3 + "\n"
 		for i in range(9):
 			r = self.rows[i]
-			s += row_string % tuple([("%s" * len(s.options)) % tuple(s.options) for s in r])
+			s += row_string % tuple(
+					[("%s" * len(s.options)) % tuple(s.options) for s in r])
 			if i % 3 ==  2:
 				s += "\n"
 		return s
@@ -117,7 +119,8 @@ class SudokuBoard(object):
 		"""
 		target = self.rows[r][c]
 
-		for related_list in (self.rows[r], self.cols[c], self.get_cube(r, c, self.rows)):
+		for related_list in (self.rows[r], self.cols[c], 
+				self.get_cube(r, c, self.rows)):
 			others_options = set()
 			for square in ifilterfalse(lambda s: s is target, related_list):
 				others_options |= set(square.options)
@@ -127,14 +130,12 @@ class SudokuBoard(object):
 		return False
 
 
-	def find_isolation_lines(self, cube_r, cube_c):
+	def find_isolation_lines(self, row_min, col_min):
 		"""
 		Given a coordinate in a cube, find any isolated rows or column which 
 		restrict an option to that row or column.  Then remove that number as 
 		an option from any other cubes that are aligned with this cube.
 		"""
-		row_min = cube_r * 3
-		col_min = cube_c * 3
 		solitary_rows = set()
 		solitary_cols = set()
 
@@ -176,7 +177,8 @@ class SudokuBoard(object):
 			square = sec_dir[p][selected]
 			if not square:
 				d =  "cols" if (pri_dir == self.rows) else "rows"
-				log.debug("Removing %s from %s %d" % (restricted_options, d, selected))
+				log.debug("Removing %s from %s %d" % (
+						restricted_options, d, selected))
 				square.options -= restricted_options
 				if square.check():
 					solved_count += 1
@@ -229,14 +231,11 @@ class SudokuBoard(object):
 		((s.check() for s in r) for r in self.rows)
 
 
-	def find_number_pairs_in_cube(self, cube_r, cube_c):
+	def find_number_pairs_in_cube(self, row_min, col_min):
 		"""
 		If two numbers are options in only two places within a cube, then all
 		other options in that square should be removed, and other items checked.
 		"""
-		row_min = cube_r * 3
-		col_min = cube_c * 3
-
 		options = []
 		pairs = []
 		log.debug("Current state of game board:\n%s\n%s", 
@@ -265,42 +264,64 @@ class SudokuBoard(object):
 				square.options -= remove_options
 			
 				
+	def all_squares(self):
+		"""
+		Generator which returns tuples of all the squares on the board
+		with their row id and col id (r, c, square)
+		"""
+		for r in range(9):
+			for c in range(9):
+				yield (r, c, self.rows[r][c])
 
+	def all_cubes(self):
+		"""
+		Generator which returns tuples of the first row/col in each
+		cube.
+		"""
+		for cube_r in range(3):
+			for cube_c in range(3):
+				yield (cube_r * 3, cube_c * 3)
+
+
+
+def find_unsolved_square(board):
+	"""
+	Find a square that has not been solved.
+	"""
+	for (r, c, square) in board.all_squares():
+		pass
 
 
 def solve(board, print_cycle=10):
 	" Solve the puzzle "
 
 	prev_status = None
+	saved_board = None
 
 	counter = 0
 
 	while True:
-		for r in range(9):
-			for c in range(9):
-				square = board.rows[r][c]
-				# skip solved squares
-				if square:
-					continue
-				if square.set(board.find_options_for(r, c, board.rows)):
-					log.info("found %s,%s through find_options" % (r,c))
-					continue
-				option = board.identify_only_possibility(r, c)
-				if option:
-					log.info("found %s,%s through identify_only" % (r,c))
-					square.set(option)
+		for (r, c, square) in board.all_squares():
+			# skip solved squares
+			if square:
+				continue
+			if square.set(board.find_options_for(r, c, board.rows)):
+				log.info("found %s,%s through find_options" % (r,c))
+				continue
+			option = board.identify_only_possibility(r, c)
+			if option:
+				log.info("found %s,%s through identify_only" % (r,c))
+				square.set(option)
 
-		for cube_r in range(3):
-			for cube_c in range(3):
-				solved = board.find_isolation_lines(cube_r, cube_c)
-				if solved:
-					log.debug("Current state of game board:\n%", board)
-					log.debug(board.show_options())
-					log.info("found %d using find_isolation_lines." % solved)
+		for (r, c) in board.all_cubes():
+			solved = board.find_isolation_lines(r, c)
+			if solved:
+				log.debug("Current state of game board:\n%", board)
+				log.debug(board.show_options())
+				log.info("found %d using find_isolation_lines." % solved)
 
-		for cube_r in range(3):
-			for cube_c in range(3):
-				board.find_number_pairs_in_cube(cube_r, cube_c)
+		for (r, c) in board.all_cubes():
+			board.find_number_pairs_in_cube(r, c)
 	
 		board.check_board()
 
@@ -311,6 +332,8 @@ def solve(board, print_cycle=10):
 
 		status = board.get_status()
 		if status  == prev_status:
+			# time to guess
+			saved_board = deepcopy(board)
 			print "Failed in %d rounds." % counter
 			print board
 			print board.show_options()
